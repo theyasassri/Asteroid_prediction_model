@@ -21,7 +21,7 @@ Pandas/NumPy (Data Processing)
 CSS/HTML (Custom Styling)
 
 📦 Installation & SetupClone 
-	the repository: git clone https://github.com/yourusername/neo-guardian-pro.git
+	the repository: git clone https://github.com/theyasassri/Asteroid_prediction_model.git
 	cd neo-guardian-pro
 Install dependencies:
  	install streamlit joblib pandas numpy scikit-learn
