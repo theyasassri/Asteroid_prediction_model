@@ -21,8 +21,10 @@ Pandas/NumPy (Data Processing)
 CSS/HTML (Custom Styling)
 
 📦 Installation & SetupClone 
+	
 	the repository: git clone https://github.com/theyasassri/Asteroid_prediction_model.git
 	cd neo-guardian-pro
+	
 Install dependencies:
  	install streamlit joblib pandas numpy scikit-learn
 Ensure the model file is present:
@@ -31,5 +33,7 @@ Run the application: python -m streamlit run app.py
 
 📊 How It Works :- 
 The system uses the Absolute Magnitude ($H$) to estimate diameter using the formula:$$D = 10^{3.122 - 0.5 \log_{10}(\text{Albedo}) - 0.2H}$$It then compares this result against the known dimensions of global landmarks to provide a sense of scale for the user.
+
+Google colab link :- https://colab.research.google.com/drive/1P6ZOIIuzZA3QY1E6kIcEBWPYzyY55EYP?usp=sharing
 
 📜 License Distributed under the MIT License. See LICENSE for more information.
