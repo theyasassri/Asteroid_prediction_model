@@ -1,30 +1,38 @@
 # Asteroid_prediction_model
 I build this ML model to explore the dundementals of machine learning and keep sharp python skills. we can predict the hazardous and non-hazardous asteroids by using this.
 
-☄️ NEO Guardian Pro: Planetary Defense Dashboard
+☄️ NEO Guardian: AI-Powered Planetary DefenseNEO Guardian is a specialized machine learning dashboard designed to analyze and predict the threat levels of Near-Earth Objects (NEOs). By leveraging NASA-sourced astronomical data, the system identifies "Potentially Hazardous Asteroids" (PHAs) before they pose a risk to Earth.
+**Project Overview :** 
+This project was developed as a comprehensive Exploratory Data Analysis (EDA) and Machine Learning application. It translates complex orbital parameters into a user-friendly "Tactical Command" interface.
 
-NEO Guardian Pro is a machine-learning-powered interface designed to assess the threat level of Near-Earth Objects (NEOs). By analyzing astronomical data like magnitude, velocity, and orbital eccentricity, the app provides real-time hazard predictions and visual scale comparisons.
+**Key Features :**
+**Real-time Threat Prediction:** Uses a Random Forest Classifier to determine safety status with a probability confidence score.# **Scientific Diameter Estimation:** Implements the IAU diameter formula based on Absolute Magnitude (*H*) and Albedo.
 
-🚀 Features:-
-AI Threat Assessment: Uses a trained Random Forest model to predict if an asteroid is hazardous.
-Automated Intelligence Brief: Generates a human-readable summary of the findings.
-Real-World Scale Comparison: Visualizes the asteroid's size against landmarks like the Eiffel Tower.
-Orbital Mechanics Simulator: Dynamic chart showing the eccentricity of the object's path.
-Impact Damage Estimator: Calculates potential blast radius and kinetic class.
-Mission Log: Tracks all scanned objects in a session history.
+**Dynamic Orbital Geometry :** Visualizes the "ovalness" (eccentricity) of an object's path.
+**Comparative Scale :** Automatically compares detected NEOs to famous Earth landmarks like the Burj Khalifa and the Eiffel Tower.**Mission Archive :** A session-based log that tracks every scanned object for further review.
 
-🛠️ Tech Stack :- 
-Python 3.9+
-Streamlit (UI Framework)
-Scikit-Learn (Machine Learning)
-Pandas/NumPy (Data Processing)
-CSS/HTML (Custom Styling)
+**Tech Stack** 
+*Language: Python 3.9+ 
+*Frontend: Streamlit (Custom CSS for Dark Mode/Space Theme)
+*Machine Learning: Scikit-Learn
+*Data Science Tools: Pandas, NumPy, Joblib
+*Visualization: Streamlit Native Charts & Matplotlib
+
+**The Science Behind the App**
+
+The core intelligence of NEO Guardian relies on 6 primary astronomical inputs:
+
+* Absolute Magnitude (H): Used to calculate physical size.
+* Relative Velocity: Determines the kinetic energy potential.
+* Eccentricity (*e*): Defines the shape of the orbital path.
+* Miss Distance: The gap between Earth and the object's current approach.
+* MOID: Minimum Orbit Intersection Distance (The "danger zone" where paths cross).
+* Uncertainty (U): The reliability of the orbital data.
+* Diameter Calculation Formula$$D = \frac{1329}{\sqrt{A}} \cdot 10^{-0.2H}$$Where *D* is diameter in km, *A* is assumed albedo (0.15), and *H* is absolute magnitude.
 
 📦 Installation & SetupClone 
-	
 	the repository: git clone https://github.com/theyasassri/Asteroid_prediction_model.git
-	cd neo-guardian-pro
-	
+	cd neo-guardian
 Install dependencies:
  	install streamlit joblib pandas numpy scikit-learn
 Ensure the model file is present:
@@ -34,6 +42,6 @@ Run the application: python -m streamlit run app.py
 📊 How It Works :- 
 The system uses the Absolute Magnitude ($H$) to estimate diameter using the formula:$$D = 10^{3.122 - 0.5 \log_{10}(\text{Albedo}) - 0.2H}$$It then compares this result against the known dimensions of global landmarks to provide a sense of scale for the user.
 
-Google colab link :- https://colab.research.google.com/drive/1P6ZOIIuzZA3QY1E6kIcEBWPYzyY55EYP?usp=sharing
+Google colab link = https://colab.research.google.com/drive/1P6ZOIIuzZA3QY1E6kIcEBWPYzyY55EYP?usp=sharing
 
 📜 License Distributed under the MIT License. See LICENSE for more information.
