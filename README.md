@@ -36,7 +36,7 @@ The core intelligence of NEO Guardian relies on 6 primary astronomical inputs:
 * Uncertainty (U): The reliability of the orbital data.
 * Diameter Calculation Formula$$D = \frac{1329}{\sqrt{A}} \cdot 10^{-0.2H}$$Where *D* is diameter in km, *A* is assumed albedo (0.15), and *H* is absolute magnitude.
 
-📦 Installation & SetupClone 
+Installation & SetupClone 
 	
 	the repository: git clone https://github.com/theyasassri/Asteroid_prediction_model.git
 	cd neo-guardian
@@ -56,4 +56,4 @@ The system uses the Absolute Magnitude ($H$) to estimate diameter using the form
 
 Google colab link = https://colab.research.google.com/drive/1P6ZOIIuzZA3QY1E6kIcEBWPYzyY55EYP?usp=sharing
 
-📜 License Distributed under the MIT License. See LICENSE for more information.
+License Distributed under the MIT License. See LICENSE for more information.
