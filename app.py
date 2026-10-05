@@ -155,30 +155,50 @@ with tab1:
 # ----------------------------------------------------
 with tab2:
     st.header("Tactical Observation Dashboard")
-    st.write("Input the asteroid's observed data to initiate a risk assessment.")
+    # --- QUICK SCENARIO PRESETS (Real NASA Observations) ---
+    preset = st.selectbox(
+        "⚡ Quick-Load Orbital Telemetry Preset",
+        [
+            "Custom Input (Configure Sliders Below)",
+            "⚠️ High-Hazard Close Call (e.g. PHA 2433953 - Low MOID, High Brightness)",
+            "🛡️ Nominal Deep-Space NEO (e.g. 3334820 - High MOID, Safe Clearance)",
+            "☄️ High-Velocity Grazing Object (Hypervelocity, Significant Eccentricity)"
+        ]
+    )
+
+    # Preset values dictionary
+    default_vals = {
+        "mag": 22.0, "unc": 5, "vel": 15.0, "ecc": 0.50, "miss": 0.05, "moid": 0.01
+    }
+    if "High-Hazard" in preset:
+        default_vals = {"mag": 20.8, "unc": 0, "vel": 12.4, "ecc": 0.20, "miss": 0.19, "moid": 0.0001}
+    elif "Nominal" in preset:
+        default_vals = {"mag": 26.5, "unc": 6, "vel": 18.6, "ecc": 0.31, "miss": 0.49, "moid": 0.48}
+    elif "High-Velocity" in preset:
+        default_vals = {"mag": 21.0, "unc": 2, "vel": 32.5, "ecc": 0.65, "miss": 0.03, "moid": 0.015}
 
     with st.container(border=True):
         col1, col2, col3 = st.columns(3)
 
         with col1:
             st.markdown("#### Appearance")
-            mag = st.slider("Brightness/Absolute Magnitude (H)", 10.0, 30.0, 22.0, 
+            mag = st.slider("Brightness/Absolute Magnitude (H)", 10.0, 30.0, float(default_vals["mag"]), 
                             help="Lower H = Brighter/Larger. Asteroids with H < 22 are usually large enough to survive the atmosphere.")
-            uncertainty = st.slider("Data Quality (U)", 0, 9, 5, 
+            uncertainty = st.slider("Data Quality (U)", 0, 9, int(default_vals["unc"]), 
                                     help="0 means we have a perfect track. 9 means the path is highly unpredictable.")
 
         with col2:
             st.markdown("####  Movement")
-            velocity = st.number_input("Speed (km/s)", 0.0, 100.0, 15.0, 
+            velocity = st.number_input("Speed (km/s)", 0.0, 100.0, float(default_vals["vel"]), 
                                        help="Typical NEOs travel at 20 km/s. Higher speed = higher impact damage.")
-            eccentricity = st.slider("Orbit Ovalness", 0.0, 0.95, 0.5, 
+            eccentricity = st.slider("Orbit Ovalness", 0.0, 0.95, float(default_vals["ecc"]), 
                                      help="0 is a circle. 0.9 is a stretched oval (comet-like).")
 
         with col3:
             st.markdown("####  Gap Distance")
-            miss_dist = st.number_input("Miss Distance (AU)", 0.0, 5.0, 0.05, 
+            miss_dist = st.number_input("Miss Distance (AU)", 0.0, 5.0, float(default_vals["miss"]), 
                                         help="1 AU is the Earth-Sun distance. Anything < 0.05 AU is a 'Close Call'.")
-            orbit_int = st.number_input("Path Intersection (MOID)", 0.0, 1.0, 0.01, 
+            orbit_int = st.number_input("Path Intersection (MOID)", 0.0, 1.0, float(default_vals["moid"]), 
                                         help="The closest point between Earth's orbit and the NEO's orbit.")
 
     if st.button(" INITIATE SCAN", use_container_width=True, type="primary"):
@@ -244,37 +264,59 @@ with tab2:
             else:
                 st.error(f" **Class:** {threat_class}")
 
-        # --- VISUALIZATION: Bar Chart (Fixed Scale) ---
+        # --- VISUALIZATION: Bar Chart (Dynamically Scaled) ---
         st.divider()
         st.write("###  Comparison to Earth Landmarks")
         
-        # We cap the NEO display at 1000m for the chart so the bars stay visible vs skyscrapers
-        neo_display = max(diameter_meters, 5.0) 
+        # Adaptive comparison set based on physical scale
+        if diameter_meters < 50:
+            comp_df = pd.DataFrame({
+                "Object": ["School Bus (12m)", "Blue Whale (30m)", "Space Shuttle (56m)", "THIS NEO"],
+                "Meters": [12, 30, 56, max(diameter_meters, 1.0)],
+                "Type": ["Reference", "Reference", "Reference", "Detected NEO"]
+            })
+        elif diameter_meters < 300:
+            comp_df = pd.DataFrame({
+                "Object": ["Boeing 747 (70m)", "Statue of Liberty (93m)", "Great Pyramid (138m)", "Eiffel Tower (300m)", "THIS NEO"],
+                "Meters": [70, 93, 138, 300, diameter_meters],
+                "Type": ["Reference", "Reference", "Reference", "Reference", "Detected NEO"]
+            })
+        else:
+            comp_df = pd.DataFrame({
+                "Object": ["Eiffel Tower (300m)", "Empire State (443m)", "Burj Khalifa (828m)", "Mount Everest (8848m)", "THIS NEO"],
+                "Meters": [300, 443, 828, 8848 if diameter_meters > 2000 else 828, diameter_meters],
+                "Type": ["Reference", "Reference", "Reference", "Reference", "Detected NEO"]
+            })
         
-        comp_df = pd.DataFrame({
-            "Object": ["Great Pyramid (138m)", "Eiffel Tower (300m)", "Empire State (443m)", "Burj Khalifa (828m)", "YOUR NEO"],
-            "Meters": [138, 300, 443, 828, neo_display],
-            "Type": ["Landmark", "Landmark", "Landmark", "Landmark", "Detected Object"]
-        })
-        
-        # Color coding: Red for the NEO, Gray for landmarks
         st.bar_chart(comp_df, x="Object", y="Meters", color="Type")
 
-        # --- VISUALIZATION: Orbit Chart (Fixed Zig-Zag) ---
-        st.write("###  Predicted Orbital Geometry")
-        st.info("""
-        **Orbital Geometry Interpretation:**
-        This plot visualizes the shape of the object's path. A circle (e=0) represents a stable, Earth-like path. 
-        A stretched ellipse indicates a highly eccentric orbit. The closer the 'loop' comes to the center 
-        while overlapping Earth's typical range (1.0 AU), the higher the planetary intersection risk.
+        # --- VISUALIZATION: Orbital Geometry (True Orbital Overlap) ---
+        st.write("### 🛰️ Orbital Path & Earth Orbit Proximity")
+        st.info(f"""
+        **Orbital Telemetry:**
+        - **NEO Eccentricity ($e$):** {eccentricity:.2f} | **MOID Danger Gap:** {orbit_int:.4f} AU
+        - Blue ring shows **Earth's circular orbit (1.0 AU)**.
+        - Red dashed path visualizes the **NEO's elliptical orbit**.
         """)
-        t = np.linspace(0, 2*np.pi, 300) # 300 points for a smooth circle
-        x = np.cos(t)
-        # Apply eccentricity to the Y-axis to squash the circle into an oval
-        y = np.sqrt(1 - eccentricity**2) * np.sin(t)
         
-        orbit_data = pd.DataFrame({"x": x, "y": y})
-        st.scatter_chart(orbit_data, x="x", y="y") # Scatter chart avoids the line connecting end-to-end
+        t = np.linspace(0, 2 * np.pi, 250)
+        # Earth reference orbit
+        earth_x = np.cos(t)
+        earth_y = np.sin(t)
+        
+        # Semi-major axis estimation (scaled around 1 AU + eccentricity offset)
+        a_neo = 1.0 + (eccentricity * 0.4)
+        b_neo = a_neo * np.sqrt(max(0.01, 1 - eccentricity**2))
+        neo_x = a_neo * np.cos(t) - (a_neo * eccentricity)  # shift focus to Sun at (0,0)
+        neo_y = b_neo * np.sin(t)
+        
+        orbit_df = pd.DataFrame({
+            "Earth Orbit X": earth_x,
+            "Earth Orbit Y": earth_y,
+            "NEO Path X": neo_x,
+            "NEO Path Y": neo_y
+        })
+        st.line_chart(orbit_df[["Earth Orbit Y", "NEO Path Y"]])
         st.caption(f"Visual representation of orbital eccentricity (e={eccentricity}). Center (0,0) represents a circular reference orbit.")
 
         # --- LOGGING ---
@@ -300,10 +342,23 @@ with tab3:
     
     with col_anal1:
         st.markdown("#### Feature Importance")
-        if hasattr(model, "feature_importances_") and hasattr(model, "feature_names_in_"):
-            importances = model.feature_importances_ * 100
-            feat_names = list(model.feature_names_in_)
-            # Map technical column names to user-friendly labels
+        importances_dict = None
+        # Try fetching live importances from API
+        try:
+            r = requests.get(f"{API_URL}/model-info", timeout=1.5)
+            if r.status_code == 200:
+                importances_dict = r.json().get("feature_importances_pct", {})
+        except Exception:
+            pass
+
+        # Fallback to local model inspection if API is offline
+        if not importances_dict and hasattr(model, "feature_importances_") and hasattr(model, "feature_names_in_"):
+            importances_dict = {
+                name: round(float(imp) * 100, 2)
+                for name, imp in zip(model.feature_names_in_, model.feature_importances_)
+            }
+
+        if importances_dict:
             label_map = {
                 "Absolute Magnitude": "Brightness / Size (H)",
                 "Minimum Orbit Intersection": "Path Intersection (MOID)",
@@ -312,18 +367,13 @@ with tab3:
                 "Eccentricity": "Orbit Eccentricity",
                 "Miss Dist.(Astronomical)": "Miss Distance"
             }
-            clean_labels = [label_map.get(f, f) for f in feat_names]
-            importance_df = pd.DataFrame({
-                "Feature": clean_labels,
-                "Importance (%)": importances
-            }).sort_values(by="Importance (%)", ascending=False)
+            importance_df = pd.DataFrame([
+                {"Feature": label_map.get(k, k), "Importance (%)": v}
+                for k, v in importances_dict.items()
+            ]).sort_values(by="Importance (%)", ascending=False)
             st.bar_chart(importance_df.set_index("Feature"), color="#FF4B4B")
         else:
-            importance_df = pd.DataFrame({
-                "Feature": ["Path Intersection (MOID)", "Brightness (Size)", "Data Uncertainty (U)", "Relative Velocity", "Eccentricity", "Miss Distance"],
-                "Importance (%)": [48.1, 34.2, 10.1, 3.0, 2.7, 1.9]
-            })
-            st.bar_chart(importance_df.set_index("Feature"), color="#FF4B4B")
+            st.warning("Feature importance unavailable: Model is not currently loaded.")
 
     with col_anal2:
         st.markdown("####  The Math: Calculating Diameter")
