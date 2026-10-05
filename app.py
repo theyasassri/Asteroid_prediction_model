@@ -32,11 +32,15 @@ def add_bg_from_url():
 
 add_bg_from_url()
 
-# ---------------- LOAD MODEL ----------------
+import os
+import requests
+
+API_URL = os.getenv("NEO_API_URL", "http://localhost:8000")
+
+# ---------------- LOAD MODEL (FALLBACK / LOCAL) ----------------
 @st.cache_resource
-def load_model():
+def load_local_model():
     try:
-        # Load the refined v2 model (trained strictly on 6 clean observable features)
         return joblib.load("asteroid_guardian_v2.pkl")
     except Exception:
         try:
@@ -44,11 +48,60 @@ def load_model():
         except Exception:
             return None
 
-model = load_model()
+local_model = load_local_model()
 
-if model is None:
-    st.error(" System Offline: Model file 'asteroid_guardian_v2.pkl' not found. Please ensure it is present in the directory.")
-    st.stop()
+def query_prediction_api(payload: dict):
+    """
+    Queries the decoupled FastAPI backend if available;
+    falls back to local model inference if backend is offline.
+    """
+    try:
+        resp = requests.post(f"{API_URL}/predict", json=payload, timeout=2.0)
+        if resp.status_code == 200:
+            return resp.json(), "API"
+    except Exception:
+        pass
+    
+    # Local fallback
+    if local_model is None:
+        return None, "OFFLINE"
+    
+    input_df = pd.DataFrame([{
+        "Absolute Magnitude": payload["absolute_magnitude"],
+        "Orbit Uncertainity": payload["orbit_uncertainty"],
+        "Relative Velocity km per sec": payload["relative_velocity"],
+        "Eccentricity": payload["eccentricity"],
+        "Miss Dist.(Astronomical)": payload["miss_distance"],
+        "Minimum Orbit Intersection": payload["minimum_orbit_intersection"]
+    }])[local_model.feature_names_in_]
+    
+    pred = int(local_model.predict(input_df)[0])
+    prob = float(local_model.predict_proba(input_df)[0][1])
+    
+    # IAU formula
+    diam_km = (1329 / np.sqrt(0.15)) * (10 ** (-0.2 * payload["absolute_magnitude"]))
+    diam_m = round(float(diam_km * 1000), 2)
+    
+    if diam_m < 25:
+        threat_class = "Meteoroid (Atmospheric Burn-up Likely)"
+    elif diam_m < 140:
+        threat_class = "City-Level Threat (Local Impact)"
+    elif diam_m < 1000:
+        threat_class = "Potentially Hazardous (Regional Impact)"
+    else:
+        threat_class = "Planet-Killer (Extinction Event)"
+        
+    return {
+        "is_hazardous": (pred == 1),
+        "status": "HAZARDOUS OBJECT" if pred == 1 else "SECURE / NOMINAL",
+        "confidence_score": round(prob if pred == 1 else (1.0 - prob), 4),
+        "hazard_probability": round(prob, 4),
+        "estimated_diameter_meters": diam_m,
+        "threat_classification": threat_class,
+        "model_version": "v2.0-local"
+    }, "LOCAL"
+
+model = local_model
 
 # ---------------- SESSION STORAGE ----------------
 if "history" not in st.session_state:
@@ -131,34 +184,25 @@ with tab2:
     if st.button(" INITIATE SCAN", use_container_width=True, type="primary"):
         asteroid_id = f"NEO-{random.randint(1000,9999)}"
         
-        # Clean feature alignment with model.feature_names_in_
-        if len(model.feature_names_in_) == 6:
-            input_dict = {
-                "Absolute Magnitude": [float(mag)],
-                "Orbit Uncertainity": [int(uncertainty)],
-                "Relative Velocity km per sec": [float(velocity)],
-                "Eccentricity": [float(eccentricity)],
-                "Miss Dist.(Astronomical)": [float(miss_dist)],
-                "Minimum Orbit Intersection": [float(orbit_int)]
-            }
-            df_input = pd.DataFrame(input_dict)[model.feature_names_in_]
-        else:
-            # Fallback for legacy v1 17-feature model if ever loaded
-            features = np.array([[mag, 0.5, 1.4e12, velocity, miss_dist, 15, uncertainty, 
-                                  orbit_int, 2450000, eccentricity, 1.2, 10, 180, 0.9, 150, 200, 0.6]])
-            df_input = pd.DataFrame(features, columns=model.feature_names_in_)
+        payload = {
+            "absolute_magnitude": float(mag),
+            "orbit_uncertainty": int(uncertainty),
+            "relative_velocity": float(velocity),
+            "eccentricity": float(eccentricity),
+            "miss_distance": float(miss_dist),
+            "minimum_orbit_intersection": float(orbit_int)
+        }
 
-        prediction = model.predict(df_input)[0]
-        probability = model.predict_proba(df_input)[0][1]
-
-        # --- MATH: Accurate Diameter Calculation ---
-        # Formula: D = (1329 / sqrt(albedo)) * 10^(-0.2 * H)
-        # Using standard albedo of 0.15 for rocky asteroids
-        try:
-            diameter_km = (1329 / np.sqrt(0.15)) * (10 ** (-0.2 * float(mag)))
-            diameter_meters = diameter_km * 1000
-        except:
-            diameter_meters = 0
+        result, engine_mode = query_prediction_api(payload)
+        
+        if result is None:
+            st.error("System offline: Neither API backend nor local model could be reached.")
+            st.stop()
+            
+        prediction = 1 if result["is_hazardous"] else 0
+        probability = result["hazard_probability"]
+        diameter_meters = result["estimated_diameter_meters"]
+        threat_class = result["threat_classification"]
 
         st.divider()
         res_col1, res_col2 = st.columns([1, 1])
@@ -181,22 +225,24 @@ with tab2:
                 """, unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            st.metric("AI Prediction Confidence", f"{probability*100:.1f}%")
+            m_col1, m_col2 = st.columns(2)
+            with m_col1:
+                st.metric("AI Prediction Confidence", f"{result['confidence_score']*100:.1f}%")
+            with m_col2:
+                st.metric("Inference Engine", f"{engine_mode} ({result['model_version']})")
 
         # --- RESULTS: Technical Dimensions ---
         with res_col2:
             st.write("### 📐 Technical Dimensions")
             st.metric("Estimated Diameter", f"{diameter_meters:.2f} Meters")
             
-            # Professional Threat Classification Logic
-            if diameter_meters < 25:
-                st.info(" **Class:** Meteoroid (Atmospheric Burn-up Likely)")
-            elif diameter_meters < 140:
-                st.warning(" **Class:** City-Level Threat (Local Impact)")
-            elif diameter_meters < 1000:
-                st.error(" **Class:** Potentially Hazardous (Regional Impact)")
+            # Threat Classification Category
+            if "Meteoroid" in threat_class:
+                st.info(f" **Class:** {threat_class}")
+            elif "City" in threat_class:
+                st.warning(f" **Class:** {threat_class}")
             else:
-                st.error(" **Class:** Planet-Killer (Extinction Event)")
+                st.error(f" **Class:** {threat_class}")
 
         # --- VISUALIZATION: Bar Chart (Fixed Scale) ---
         st.divider()

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  neo-guardian-api:
+    build: .
+    container_name: neo_guardian_api
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  neo-guardian-dashboard:
+    build: .
+    container_name: neo_guardian_dashboard
+    command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      - NEO_API_URL=http://neo-guardian-api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      neo-guardian-api:
+        condition: service_healthy
+    restart: unless-stopped
