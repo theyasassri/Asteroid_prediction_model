@@ -78,9 +78,9 @@ To demonstrate architectural maturity, the ML inference should be decoupled from
 - [x] **Step 1:** Modify/script training on exactly 6 clean observable features without data leakage (`train_v2.py`).
 - [x] **Step 2:** Export `asteroid_guardian_v2.pkl` (achieved 100% recall on hazardous class with balanced weights).
 - [x] **Step 3:** Update `app.py` to use `asteroid_guardian_v2.pkl` with dynamic feature importance and zero dummy variables.
-- [ ] **Step 4:** Generate `requirements.txt`.
-- [ ] **Step 5:** Create `api.py` (FastAPI).
-- [ ] **Step 6:** Refactor `app.py` to call `api.py`.
-- [ ] **Step 7:** Write Unit Tests (`test_api.py`, `test_model.py`).
-- [ ] **Step 8:** Add `Dockerfile`.
-- [ ] **Step 9:** Update `README.md` with new architecture diagrams and setup instructions.
+- [x] **Step 4:** Generate `requirements.txt` with pinned dependencies.
+- [x] **Step 5:** Create `api.py` (FastAPI backend with `/predict`, `/health`, and `/model-info`).
+- [x] **Step 6:** Refactor `app.py` to call `api.py` with seamless local model fallback.
+- [x] **Step 7:** Write Unit & Integration Tests (`test_app.py` - 7 passed).
+- [x] **Step 8:** Add `Dockerfile` and `docker-compose.yml` for containerized deployment.
+- [x] **Step 9:** Update `README.md` with production architecture diagrams, performance benchmarks, and setup instructions.

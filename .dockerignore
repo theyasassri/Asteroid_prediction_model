@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.ipynb_checkpoints/
+.pytest_cache/
+.coverage
+htmlcov/
+env/
+venv/
+.env
+.venv/
+.DS_Store
