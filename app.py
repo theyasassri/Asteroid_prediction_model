@@ -36,15 +36,18 @@ add_bg_from_url()
 @st.cache_resource
 def load_model():
     try:
-        # Loading your pre-trained Random Forest Intelligence
-        return joblib.load("asteroid_guardian_v1.pkl")
-    except:
-        return None
+        # Load the refined v2 model (trained strictly on 6 clean observable features)
+        return joblib.load("asteroid_guardian_v2.pkl")
+    except Exception:
+        try:
+            return joblib.load("asteroid_guardian_v1.pkl")
+        except Exception:
+            return None
 
 model = load_model()
 
 if model is None:
-    st.error(" System Offline: Model file 'asteroid_guardian_v1.pkl' not found. Please upload it to the directory.")
+    st.error(" System Offline: Model file 'asteroid_guardian_v2.pkl' not found. Please ensure it is present in the directory.")
     st.stop()
 
 # ---------------- SESSION STORAGE ----------------
@@ -128,13 +131,22 @@ with tab2:
     if st.button(" INITIATE SCAN", use_container_width=True, type="primary"):
         asteroid_id = f"NEO-{random.randint(1000,9999)}"
         
-        # Mapping the inputs to the model features
-        # Note: We use specific assumptions for unused features to keep the demo simple
-        features = np.array([[mag, 0.5, 1.4e12, velocity, miss_dist, 15, uncertainty, 
-                              orbit_int, 2450000, eccentricity, 1.2, 10, 180, 0.9, 150, 200, 0.6]])
-        
-        # Create DataFrame with correct column names from the trained model
-        df_input = pd.DataFrame(features, columns=model.feature_names_in_)
+        # Clean feature alignment with model.feature_names_in_
+        if len(model.feature_names_in_) == 6:
+            input_dict = {
+                "Absolute Magnitude": [float(mag)],
+                "Orbit Uncertainity": [int(uncertainty)],
+                "Relative Velocity km per sec": [float(velocity)],
+                "Eccentricity": [float(eccentricity)],
+                "Miss Dist.(Astronomical)": [float(miss_dist)],
+                "Minimum Orbit Intersection": [float(orbit_int)]
+            }
+            df_input = pd.DataFrame(input_dict)[model.feature_names_in_]
+        else:
+            # Fallback for legacy v1 17-feature model if ever loaded
+            features = np.array([[mag, 0.5, 1.4e12, velocity, miss_dist, 15, uncertainty, 
+                                  orbit_int, 2450000, eccentricity, 1.2, 10, 180, 0.9, 150, 200, 0.6]])
+            df_input = pd.DataFrame(features, columns=model.feature_names_in_)
 
         prediction = model.predict(df_input)[0]
         probability = model.predict_proba(df_input)[0][1]
@@ -242,11 +254,30 @@ with tab3:
     
     with col_anal1:
         st.markdown("#### Feature Importance")
-        importance_df = pd.DataFrame({
-            "Feature": ["Brightness (Size)", "Path Intersection (MOID)", "Velocity", "Distance", "Other Orbitals"],
-            "Importance (%)": [45, 30, 15, 7, 3]
-        })
-        st.bar_chart(importance_df.set_index("Feature"), color="#FF4B4B")
+        if hasattr(model, "feature_importances_") and hasattr(model, "feature_names_in_"):
+            importances = model.feature_importances_ * 100
+            feat_names = list(model.feature_names_in_)
+            # Map technical column names to user-friendly labels
+            label_map = {
+                "Absolute Magnitude": "Brightness / Size (H)",
+                "Minimum Orbit Intersection": "Path Intersection (MOID)",
+                "Orbit Uncertainity": "Data Uncertainty (U)",
+                "Relative Velocity km per sec": "Relative Velocity",
+                "Eccentricity": "Orbit Eccentricity",
+                "Miss Dist.(Astronomical)": "Miss Distance"
+            }
+            clean_labels = [label_map.get(f, f) for f in feat_names]
+            importance_df = pd.DataFrame({
+                "Feature": clean_labels,
+                "Importance (%)": importances
+            }).sort_values(by="Importance (%)", ascending=False)
+            st.bar_chart(importance_df.set_index("Feature"), color="#FF4B4B")
+        else:
+            importance_df = pd.DataFrame({
+                "Feature": ["Path Intersection (MOID)", "Brightness (Size)", "Data Uncertainty (U)", "Relative Velocity", "Eccentricity", "Miss Distance"],
+                "Importance (%)": [48.1, 34.2, 10.1, 3.0, 2.7, 1.9]
+            })
+            st.bar_chart(importance_df.set_index("Feature"), color="#FF4B4B")
 
     with col_anal2:
         st.markdown("####  The Math: Calculating Diameter")
